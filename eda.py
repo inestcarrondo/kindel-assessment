@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors
-from rdkit.Chem.Scaffolds.MurckoScaffold import MurckoScaffoldSmiles
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import roc_auc_score
@@ -115,25 +114,6 @@ Xt,Xv,yt,yv = train_test_split(X,y,stratify=y,test_size=0.3)
 clf = RandomForestClassifier(n_estimators=200).fit(Xt,yt)
 auc = roc_auc_score(yv,clf.predict_proba(Xv)[:,1])
 print("Distribution shift AUC:",auc)
-
-#scaffold diversity
-def scaffold(smiles):
-    try:
-        return MurckoScaffoldSmiles(smiles=smiles)
-    except:
-        return None
-
-df_all["scaffold"] = df_all["smiles"].apply(scaffold)
-scount = df_all.groupby(["scaffold","split"]).size().unstack(fill_value=0)
-only_train = ((scount["train"]>0) & (scount.get("test",0)==0)).sum()
-only_test  = ((scount.get("test",0)>0) & (scount["train"]==0)).sum()
-print(f"Unique scaffolds in train: {only_train} / in test: {only_test}")
-
-plt.figure()
-plt.hist(scount.sum(axis=1),bins=50)
-plt.title("Compounds per scaffold")
-plt.savefig(os.path.join(RESULTS_DIR,"scaffold_hist.png"),dpi=300)
-plt.close()
 
 # synthon-level
 for part in ["smiles_a","smiles_b","smiles_c"]:
