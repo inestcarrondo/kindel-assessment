@@ -145,12 +145,16 @@ Weighted tree- and neighbor-based models offer a **middle ground**: simple, scal
 ---
 
 ### Option 2 — ChemBERTa for DEL Data
-**Rationale.** Fingerprint-based models may overfit to fragment overlap, especially under **disynthon** splits. Transformer-based models like **ChemBERTa** can capture richer molecular context and generalize better across scaffolds.  
-By combining pretrained embeddings with **count-aware training**, ChemBERTa can learn contextual chemical features while remaining robust to noisy, low-count compounds. This design also extends naturally to multi-task setups across multiple kinases.
+**Rationale.** Fingerprint models may overfit to fragment overlap, especially under **disynthon** splits. Transformer encoders like **ChemBERTa** can capture richer molecular context and generalize better across scaffolds.  
 
-**Approach.**
-- Fine-tune **ChemBERTa**, a pretrained SMILES encoder, on DEL compounds.  
 
+#### **Approach 1: Frozen Embeddings + lighweight head**
+
+Compute and cache sequence-level embeddings from a pretrained ChemBERTa encoder for each SMILES string, then train simple regressors on top (XGBoost/Random Forest). A lighter approach that is easy to reproduce.  
+
+#### **Approach 2: Fine Tuning**
+
+Fine-tune **ChemBERTa**, on DEL compounds using the HuggingFace trainer. This can improve results but costs more in terms of computing
 
 ## Code
 
