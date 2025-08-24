@@ -1,12 +1,13 @@
 <details>
 <summary><strong>Table of contents</strong></summary>
 
+- [Intro](#intro)
 - [Problem Identification & Caveats](#problem-identification--caveats)
 - [Interpretation of Model Results, Hypotheses & Suggested Tests](#interpretation-of-model-results-hypotheses--suggested-tests)
 - [Proposed Model Architectures](#proposed-model-architectures)
   - [Option 1 — Noise-Aware Weighted Tree & Neighbor Models](#option-1--noise-aware-weighted-tree--neighbor-models)
   - [Option 2 — ChemBERTa for DEL Data](#option-2--chemberta-for-del-data)
-- [Added code](#added-code)
+- [Code](#code)
 - [Results](#results)
   - [MAPK14](#mapk14)
   - [DDR1](#ddr1)
@@ -15,6 +16,10 @@
 - [Future Work](#future-work)
 
 </details>
+
+## Intro
+
+This README gives an overall view of the modelling approach. You'll find an analysis of the key challenges of the data and why they matter, how to interpret the results and the hypothesis that they motivate. Also, two modelling options plus the explanation on how to run the code. Finally, an AWS deployment outline and direction for future work.
 
 ## Problem Identification & Caveats
 
@@ -149,17 +154,42 @@ By combining pretrained embeddings with **count-aware training**, ChemBERTa can 
 
 ## Code
 
-I attempted to keep the code as similar to KinDEl's architecture for reproducibility purposes. The following files were added:
+I attempted to keep the code as similar to KinDEL's architecture for reproducibility purposes. The following files were added:
 
-**Exploratory Data Analysis**
+### Exploratory Data Analysis
+- **eda.py**: EDA for a KinDEL target/split. Loads train/valid/test, plots replicate noise, enrichment-Kd trend, covariate shift and control distributions. Saves figures to eda_results/. Example run: *python eda.py ddr1 random 1*
+- **noise_analysis.py**: Generates a full replicate-noise report for both targets. Saves output to benchmark_outputs/noise_analysis/. Example run: *python noise_analys.py*
+- **disynthon_noise.py**: Analyzes performance variation across disynthon (or random) splits. It measures replicate noise and dropout, train-test distribution shifts and chemical overlap. Outputs saved to disynthon/noise. Example run: *python disynthon_noise.py --split-type disynthon --split-ids 1,2,3,4,5 --targets map14,ddr1*
+- **test_hypotheses.py**: Runs a set of hypothesis tests and writes a results CSV to hypotheses_results/. Example run: *python test_hypotheses.py --nrows 200000 --models xgboost --targets mapk14,ddr1 --splits random,disynthon --split-idx 1,2,3,4,5*
 
-**Models**
+### Models
 
-basic_noiseaware.py
-basic_chemberta.py
+- **basic_noiseaware.py**: Implements noise-aware regressors (Random Forest, XGBoost, kNN). Run using the description below in the benchmarking.py section.
+- **basic_chemberta.py**: Implements ChemBERTa based models. Computes cached SMILES embeddings from a pretrained ChemBERTa and trains simple regressors (Random Forest, XGBoost). Also includes a ChemBERTaRegressor for end-to-end fine-tuning with Hugging Face. Run using the description below in the benchmarking.py section.
 
-**Benchmarking.py**
-Wrapper to simplify benchmarking.
+### Benchmarking.py
+Wrapper that runs the end-to-end benchmark. It builds a stratified subsample per target, launches the training via Redun for the selected models on random and disynthon splits and writes a summary csv.
+
+### Environment & How to Run
+
+#### 1 - Set up the environment
+```bash
+# from the repository root install and activate the environment
+pixi install 
+pixi shell
+```
+#### 2 - Run the benchmarking script
+```bash
+python benchmarking.py --nrows <rows> --models <model1,model2,...>
+```
+
+```bash
+# Example
+python benchmarking.py --nrows 200000 --models xgboost,xgboost_noise
+```
+#### Model options:
+xgboost, rf, knn, xgboost_noise, rf_noise, knn_noise, chemberta_xgb, chemberta_rf, chemberta_ft (fine tunning).
+
 
 ## Results
 
