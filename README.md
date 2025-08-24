@@ -16,11 +16,11 @@
 
 </details>
 
-### Problem Identification & Caveats
+## Problem Identification & Caveats
 
 While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enrichment scores derived from on-DNA selections exhibit several limitations that must be acknowledged before training predictive models:
 
-- **On-DNA vs Off-DNA Binding Discrepancy**  
+### 1 - On-DNA vs Off-DNA Binding Discrepancy
   Enrichment scores are obtained while compounds are attached to a DNA tag and linker. These tags can introduce steric or conformational artifacts that alter interaction with the kinase binding pocket.  
 
   **Main Idea:**  
@@ -40,7 +40,7 @@ While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enric
   _How can models correct for barcode-specific effects so enrichment scores more faithfully reflect biochemical binding affinity rather than DNA tag artifacts?_
 
 
-- **Experimental Noise & Modeling Challenges**  
+### 2 - Experimental Noise & Modeling Challenges 
   DEL data are derived from **noisy sequencing counts**, which are affected by both experimental variability and statistical instability.  
   - **Reaction yield:** Some compounds are synthesized less efficiently, so they appear weak even if they bind well.  
   - **PCR bias:** Certain tags amplify more readily, creating false positives.  
@@ -64,7 +64,7 @@ While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enric
 ![spearman_targets](benchmark_outputs/noise_relative/combined/targets_spearman_by_presence_side_by_side.png)
 
 
-- **Sparse and Biased Validation**  
+### 3 - Sparse and Biased Validation  
   Off-DNA affinity measurements (Kd) were obtained only for a deliberately selected subset of compounds, chosen using an ensemble of predictive models followed by Butina clustering on Morgan fingerprints to ensure chemical diversity. While this strategy captures a range of predicted pKd values, it introduces a model-driven selection bias and excludes the vast majority of on-DNA compounds, especially low-affinity or noisy binders.  
 
   **Main Idea:**  
@@ -81,7 +81,7 @@ While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enric
   _How do we train and evaluate models fairly in the presence of a highly biased and sparsely labeled ground-truth set?_
 
 
-- **Target Scope Constraint**  
+### 4 - Target Scope Constraint 
   The KinDEL dataset focuses exclusively on two kinases (MAPK14 and DDR1).  
 
   **Main Idea:**  
@@ -95,7 +95,7 @@ While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enric
   _How well do models trained on enrichment data from one kinase transfer to another kinase target, and can joint or multi-task training improve intra-kinase generalization?_
 
 
-### Interpretation of Model Results, Hypotheses & Suggested Tests  
+## Interpretation of Model Results, Hypotheses & Suggested Tests  
 
 ---
 
@@ -147,7 +147,7 @@ By combining pretrained embeddings with **count-aware training**, ChemBERTa can 
 - Fine-tune **ChemBERTa**, a pretrained SMILES encoder, on DEL compounds.  
 
 
-### Code
+## Code
 
 I attempted to keep the code as similar to KinDEl's architecture for reproducibility purposes. The following files were added:
 
@@ -161,11 +161,11 @@ basic_chemberta.py
 **Benchmarking.py**
 Wrapper to simplify benchmarking.
 
-### Results
+## Results
 
 It was only possible to run the models in a very short dataset, and only two random and two disynthon splits due to computing limitations. benchmarking.py was created to take in a nrows argument, that partitions the data further, based on target_enrichement deciles to attempt a representative distribution of data (pre splits already implemented by KinDEL)
 
-## MAPK14
+### MAPK14
 | split_type   | model         |   number_of_rows | Test Loss (MSE)   | In-Library on-DNA (Spearman)   | In-Library off-DNA (Spearman)   | Extended on-DNA (Spearman)†   |
 |:-------------|:--------------|-----------------:|:------------------|:-------------------------------|:--------------------------------|:------------------------------|
 | disynthon    | xgboost       |           200000 | 0.070 ± 0.004     | 0.500 ± 0.054                  | 0.393 ± 0.034                   | 0.023 ± 0.081                 |
@@ -173,7 +173,7 @@ It was only possible to run the models in a very short dataset, and only two ran
 | random       | xgboost       |           200000 | 0.060 ± 0.007     | 0.481 ± 0.003                  | 0.536 ± 0.009                   | 0.043 ± 0.012                 |
 | random       | xgboost_noise |           200000 | 0.060 ± 0.000     | 0.460 ± 0.005                  | 0.445 ± 0.143                   | -0.018 ± 0.010                |
 
-## DDR1
+### DDR1
 | split_type   | model         |   number_of_rows | Test Loss (MSE)   | In-Library on-DNA (Spearman)   | In-Library off-DNA (Spearman)   | Extended on-DNA (Spearman)†   |
 |:-------------|:--------------|-----------------:|:------------------|:-------------------------------|:--------------------------------|:------------------------------|
 | disynthon    | xgboost       |           200000 | 0.522 ± 0.010     | 0.549 ± 0.016                  | 0.270 ± 0.028                   | 0.597 ± 0.009                 |
