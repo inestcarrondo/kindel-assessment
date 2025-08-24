@@ -26,7 +26,9 @@ from kindel.models.basic_chemberta import (
 
 from kindel.models.basic_noiseaware import (
     RandomForestNoiseAware,
+    RandomForestNB,
     XGBoostNoiseAware,
+    XGBoostNB,
     KNearestNeighborsNoiseAware,
 )
 
@@ -43,40 +45,37 @@ BATCH_ENV_VAR_DICT = {
     }
 }
 
+MODEL_DICT = {
+    "chemberta_xgb": XGBoostChemBERTa,
+    "chemberta_rf": RandomForestChemBERTa,
+    "xgboost_noise": XGBoostNoiseAware,
+    "xgboost_nb": XGBoostNB,
+    "rf_noise": RandomForestNoiseAware,
+    "rf_nb": RandomForestNB,
+    "knn_noise": KNearestNeighborsNoiseAware,
+    "xgboost_basic": XGBoost,
+    "rf_basic": RandomForest,
+    "knn_basic": KNeareastNeighbors,
+    "dnn": DeepNeuralNetwork,
+    "gin": GraphIsomorphismNetwork,
+    "compose": DELCompose,
+    "chemberta_ft": ChemBERTaRegressor,
+}
+
 import inspect, kindel.models.basic_chemberta
 print(inspect.getsource(kindel.models.basic_chemberta.ChemBERTaEncoder))
 
 def get_model(model_name: str, hyperparameters: dict, wandb_logger: WandbLogger):
-    name = model_name.lower()
-
-    if name.startswith("chemberta_xgb"):
-        model = XGBoostChemBERTa(**hyperparameters)
-    elif name.startswith("chemberta_rf"):
-        model = RandomForestChemBERTa(**hyperparameters)
-    elif name.startswith("xgboost_noise"):
-        model = XGBoostNoiseAware(**hyperparameters)
-    elif name.startswith("rf_noise"):
-        model = RandomForestNoiseAware(**hyperparameters)
-    elif name.startswith("knn_noise"):
-        model = KNearestNeighborsNoiseAware(**hyperparameters)
-    elif name.startswith("xgboost"):
-        model = XGBoost(**hyperparameters)
-    elif name.startswith("rf"):
-        model = RandomForest(**hyperparameters)
-    elif name.startswith("knn"):
-        model = KNeareastNeighbors(**hyperparameters)
-    elif name.startswith("dnn"):
-        model = DeepNeuralNetwork(wandb_logger, **hyperparameters)
-    elif name.startswith("gin"):
-        model = GraphIsomorphismNetwork(wandb_logger, **hyperparameters)
-    elif name.startswith("compose"):
-        model = DELCompose(wandb_logger, **hyperparameters)
-    elif name.startswith("chemberta_ft"):
-        model = ChemBERTaRegressor(**hyperparameters)
-
-    else:
+    
+    key = model_name.lower()
+    
+    if key not in MODEL_DICT:
         raise ValueError(f"Unknown model: {model_name}")
-    return model
+    
+    cls = MODEL_DICT[key]
+
+    return cls(**hyperparameters) if "Lightning" not in cls.__name__ else cls(wandb_logger, **hyperparameters)
+
 
 @task(vcpus=5, job_def_extra=BATCH_ENV_VAR_DICT)
 def training_subjob(
