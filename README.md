@@ -1,3 +1,21 @@
+<details>
+<summary><strong>Table of contents</strong></summary>
+
+- [Problem Identification & Caveats](#problem-identification--caveats)
+- [Interpretation of Model Results, Hypotheses & Suggested Tests](#interpretation-of-model-results-hypotheses--suggested-tests)
+- [Proposed Model Architectures](#proposed-model-architectures)
+  - [Option 1 — Noise-Aware Weighted Tree & Neighbor Models](#option-1--noise-aware-weighted-tree--neighbor-models)
+  - [Option 2 — ChemBERTa for DEL Data](#option-2--chemberta-for-del-data)
+- [Added code](#added-code)
+- [Results](#results)
+  - [MAPK14](#mapk14)
+  - [DDR1](#ddr1)
+- [Experimental Design and Active Learning](#experimental-design-and-active-learning)
+- [AWS Architecture](#aws-architecture)
+- [Future Work](#future-work)
+
+</details>
+
 ### Problem Identification & Caveats
 
 While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enrichment scores derived from on-DNA selections exhibit several limitations that must be acknowledged before training predictive models:
@@ -129,7 +147,7 @@ By combining pretrained embeddings with **count-aware training**, ChemBERTa can 
 - Fine-tune **ChemBERTa**, a pretrained SMILES encoder, on DEL compounds.  
 
 
-### Added code
+### Code
 
 I attempted to keep the code as similar to KinDEl's architecture for reproducibility purposes. The following files were added:
 
