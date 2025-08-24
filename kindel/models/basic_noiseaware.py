@@ -35,10 +35,6 @@ class Model(ABC):
 
 
 class ScikitLearnModel(Model):
-    """
-    Adds replicate-based noise features and a sample-weight vector
-    w = 1 / (1 + CV) for multi-fidelity fitting.
-    """
     def prepare_dataset(self, df_train, df_valid, df_test):
         X_train, y_train, w_train = self.featurize(df_train)
         X_valid, y_valid, w_valid = self.featurize(df_valid)

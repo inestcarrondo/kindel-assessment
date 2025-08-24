@@ -147,7 +147,6 @@ def training_subjob(
         results["lib"][condition] = {"rho": rho, "tau": tau}
 
     print("saving results")
-    # --- cast all numeric metrics to plain Python floats (clean YAML) ---
     import numbers
     def cast_dict(d):
         out = {}
