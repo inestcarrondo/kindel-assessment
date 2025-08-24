@@ -129,6 +129,43 @@ By combining pretrained embeddings with **count-aware training**, ChemBERTa can 
 - Fine-tune **ChemBERTa**, a pretrained SMILES encoder, on DEL compounds.  
 
 
+### Added code
+
+I attempted to keep the code as similar to KinDEl's architecture for reproducibility purposes. The following files were added:
+
+**Exploratory Data Analysis**
+
+**Models**
+
+basic_noiseaware.py
+basic_chemberta.py
+
+**Benchmarking.py**
+Wrapper to simplify benchmarking.
+
+### Results
+
+It was only possible to run the models in a very short dataset, and only two random and two disynthon splits due to computing limitations. benchmarking.py was created to take in a nrows argument, that partitions the data further, based on target_enrichement deciles to attempt a representative distribution of data (pre splits already implemented by KinDEL)
+
+## MAPK14
+| split_type   | model         |   number_of_rows | Test Loss (MSE)   | In-Library on-DNA (Spearman)   | In-Library off-DNA (Spearman)   | Extended on-DNA (Spearman)†   |
+|:-------------|:--------------|-----------------:|:------------------|:-------------------------------|:--------------------------------|:------------------------------|
+| disynthon    | xgboost       |           200000 | 0.070 ± 0.004     | 0.500 ± 0.054                  | 0.393 ± 0.034                   | 0.023 ± 0.081                 |
+| disynthon    | xgboost_noise |           200000 | 0.070 ± 0.003     | 0.480 ± 0.039                  | 0.494 ± 0.002                   | 0.058 ± 0.118                 |
+| random       | xgboost       |           200000 | 0.060 ± 0.007     | 0.481 ± 0.003                  | 0.536 ± 0.009                   | 0.043 ± 0.012                 |
+| random       | xgboost_noise |           200000 | 0.060 ± 0.000     | 0.460 ± 0.005                  | 0.445 ± 0.143                   | -0.018 ± 0.010                |
+
+## DDR1
+| split_type   | model         |   number_of_rows | Test Loss (MSE)   | In-Library on-DNA (Spearman)   | In-Library off-DNA (Spearman)   | Extended on-DNA (Spearman)†   |
+|:-------------|:--------------|-----------------:|:------------------|:-------------------------------|:--------------------------------|:------------------------------|
+| disynthon    | xgboost       |           200000 | 0.522 ± 0.010     | 0.549 ± 0.016                  | 0.270 ± 0.028                   | 0.597 ± 0.009                 |
+| disynthon    | xgboost_noise |           200000 | 0.518 ± 0.011     | 0.519 ± 0.051                  | 0.277 ± 0.012                   | 0.549 ± 0.013                 |
+| random       | xgboost       |           200000 | 0.504 ± 0.036     | 0.585 ± 0.004                  | 0.305 ± 0.016                   | 0.610 ± 0.031                 |
+| random       | xgboost_noise |           200000 | 0.506 ± 0.038     | 0.541 ± 0.002                  | 0.295 ± 0.066                   | 0.585 ± 0.005                 |
+
+
+
+I believe there is a case to be made for the noise aware models, given that, even though mse did not decrease significantly, there is a visible improvement on off dna correlation, meaning that a stronger biological signal is visible once the noise is considered (also in line with the higher performance of DEL compose models reflected in the paper.)
 ## Experimental Design and Active Learning
 PCR/Sequencing–Aware Molecule Selection for Kd (beyond ensemble + Butina)
 
@@ -151,8 +188,26 @@ Whishful thinking DoE:
 Active learning option. Run the same selection in batches: start with a small pilot Kd, fit the replicate-aware count model and predictors, compute an acquisition score per molecule (e.g., uncertainty in log-enrichment + target–control residual magnitude + ensemble disagreement), enforce quotas for the depth×enrichment grid, rare disynthons, and dropouts, then select a cost-limited batch, measure Kd, retrain, and iterate. Keep ~10–20% exploration (random/diversity picks) to avoid bias, and stop when calibration and held-out off-DNA ranking no longer improve.
 
 
+
+
+## AWS Architecture
+
+**Considerations**
+- User base - biotech and bioinformatics scientists
+- Access Management - Require admin approvation for Production Deployment
+- LAtency sensitivity - Non existence
+- Cost control - No constant retraining needs - we can use Spot Instances (may become more time sensitive if Active Learning is implemented)
+- Retraining triggers - if new data is uploaded (either through public kindel data or privatelly generated data)
+- MLFlow integration for model sharing with scientific comunnity
+- Future API endpoint for community access
+
+
+  ![aws](aws_architecture.png)
+
+
 ## Future Work
 
-Evaluate effectiveness of different weights for noise aware models  
-Test chemberta regression  
-Test model transferability  
+- Test chemberta regression  - Right now the chemberta models are using frozen encodings.  Improvements are expected by using a regression model (non frozen encodings)
+- Test model transferability  - Although unlikely to yield good results, it would be interesting to explore the possibility of training the models on both targets, or cross test to see how well the models generalize for other target (search for available data on closer kinases, for example)
+- Research further on available literature about similar experiments - explore, for example, the proposed solutions for the kaggle competition https://www.kaggle.com/competitions/leash-BELKA 
+- Consider generative architecture, to suggest new molecules
