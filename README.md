@@ -21,14 +21,12 @@
 
 This README gives an overall view of the modelling approach. You'll find an analysis of the key challenges of the data and why they matter, how to interpret the results and the hypothesis that they motivate. Also, two modelling options plus the explanation on how to run the code. Finally, an AWS deployment outline and direction for future work.
 
-## Problem Identification & Caveats
+## Problem Identification & Challenges
 
 While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enrichment scores derived from on-DNA selections exhibit several limitations that must be acknowledged before training predictive models:
 
 ### 1 - On-DNA vs Off-DNA Binding Discrepancy
-  Enrichment scores are obtained while compounds are attached to a DNA tag and linker. These tags can introduce steric or conformational artifacts that alter interaction with the kinase binding pocket.  
-
-  **Main Idea:**  
+  Enrichment scores are obtained while compounds are attached to a DNA tag and linker. These tags can introduce steric or conformational artifacts that alter interaction with the kinase binding pocket. 
   In addition to structural interference from the linker, individual DNA barcodes themselves may contribute unevenly to enrichment scores due to differences in PCR amplification efficiency or sequence-specific behavior. This creates a risk that enrichment reflects DNA-artifact signals rather than true ligand–target affinity.  
 
   **KinDEL Dataset Caveat:**  
@@ -49,16 +47,15 @@ While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enric
   DEL data are derived from **noisy sequencing counts**, which are affected by both experimental variability and statistical instability.  
   - **Reaction yield:** Some compounds are synthesized less efficiently, so they appear weak even if they bind well.  
   - **PCR bias:** Certain tags amplify more readily, creating false positives.  
-  - **Low-count instability:** Ratios of small numbers (e.g., 3 vs. 1 reads) can exaggerate changes that are just random noise.  
-
-  **Main Idea:**  
-  Because noise arises both from chemistry and sequencing, enrichment should not be treated as a clean continuous variable. Instead, count-based statistical models (e.g., negative binomial or Bayesian approaches) provide a more robust way to estimate binding signals. In practice, replicate CVs in KinDEL disynthon splits are high (~0.83), replicate correlations are weak (~0.30), and dropout is common (~17% of molecules present in all replicates). This quantifies the noise floor our models must contend with.  
+  - **Low-count instability:** Ratios of small numbers (e.g., 3 vs. 1 reads) can exaggerate changes that are just random noise.   
+  Because noise arises both from chemistry and sequencing, enrichment should not be treated as a clean continuous variable. Instead, count-based statistical models (e.g., negative binomial or Bayesian approaches) provide a more robust way to estimate binding signals. In practice, replicate coefficient of variations (CVs) in KinDEL disynthon splits are high (~0.83), replicate correlations are weak (~0.30), and dropout is common (~17% of molecules present in all replicates). This describes the noise the models must contend with.  
 
   **Supporting Sources:**  
   > “Variable reaction yields and PCR amplification efficiencies inject noise into DEL selection data.”  
   > — *KinDEL: DNA-Encoded Library Dataset for Kinase Inhibitors*  
   >
-  > “ADD NB model QUOTE”  
+  > “we consider the negative binomial (NB) distribution as a good model for the analysis of the sequence counts.”  
+  > — *Discovery of TNF Inhibitors from a DNA-Encoded Chemical Library based on Diels–Alder Cycloaddition. Chemistry & Biology 16(10):1075–1086 (2009). DOI: 10.1016/j.chembiol.2009.09.011*
 
   **Key Question Raised:**  
   _What modeling strategies can best separate true binding signal from experimental noise in DEL count data?_  
@@ -71,9 +68,7 @@ While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enric
 
 ### 3 - Sparse and Biased Validation  
   Off-DNA affinity measurements (Kd) were obtained only for a deliberately selected subset of compounds, chosen using an ensemble of predictive models followed by Butina clustering on Morgan fingerprints to ensure chemical diversity. While this strategy captures a range of predicted pKd values, it introduces a model-driven selection bias and excludes the vast majority of on-DNA compounds, especially low-affinity or noisy binders.  
-
-  **Main Idea:**  
-  Validation compounds are not drawn randomly from the library but are instead enriched for chemically diverse, predicted high-affinity binders. This limits our ability to estimate model performance across the full range of DEL hit quality and may overestimate generalization.  
+  Validation compounds are not drawn randomly from the library but are instead enriched for chemically diverse, predicted high-affinity binders. This limits the ability to estimate model performance across the full range of DEL hit quality and may overestimate generalization.  
 
   **Supporting Sources:**  
   > “We selected validation compounds to cover a range of KD values and chemical diversity ... using an ensemble of models ... then clustered the molecules based on chemical similarity via Butina clustering using Morgan fingerprints.”  
@@ -88,8 +83,6 @@ While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enric
 
 ### 4 - Target Scope Constraint 
   The KinDEL dataset focuses exclusively on two kinases (MAPK14 and DDR1).  
-
-  **Main Idea:**  
   The narrow target diversity, even within the kinase family, raises concerns about the model’s ability to generalize to other kinases with different binding site geometries. A model trained on MAPK14 may capture features idiosyncratic to that kinase rather than representations that are transferable to other kinase targets (such as DDR1 or beyond).  
 
   **Supporting Sources:**  
@@ -113,7 +106,7 @@ While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enric
 2. **Disynthon Splits Reveal Generalization Limits**  
    - Standard random and cluster splits allow synthon overlap between train and test, inflating results.  
    - Disynthon splits deliberately break synthon overlap, forcing models to extrapolate to unseen fragment combinations — this exposes memorization in fingerprint-based models.  
-   - Our diagnostics further show that, across different disynthon seeds, chemical overlap with training remains extremely high (median max Tanimoto = 1.0). The large variance in performance therefore stems less from scaffold novelty and more from replicate instability and enrichment distribution shifts.  
+   - Diagnostics further show that, across different disynthon seeds, chemical overlap with training remains extremely high (median max Tanimoto = 1.0). The large variance in performance therefore stems less from scaffold novelty and more from replicate instability and enrichment distribution shifts.  
    → *Suggested test:* Compare fingerprint-based vs. structure-aware models (e.g., GNNs). If GNNs degrade less under disynthon splits, it supports the fragment-memorization hypothesis. If variance across splits correlates with replicate CV and dropout rates, it supports the noise-driver hypothesis.
 
 3. **Rare Disynthon Combinations May Drive High Variance**  
@@ -134,7 +127,8 @@ While DNA-Encoded Libraries (DELs) enable ultra-high-throughput screening, enric
 ## Proposed Model Architectures
 
 ### Option 1 — Noise-Aware Weighted Tree & Neighbor Models
-**Rationale.** Enrichment ratios are noisy and heteroskedastic. Full probabilistic models (e.g., DEL-Compose) are principled but heavier to deploy.  
+
+Enrichment ratios are noisy and heteroskedastic. Full probabilistic models (e.g., DEL-Compose) are principled but heavier to deploy.  
 Weighted tree- and neighbor-based models offer a **middle ground**: simple, scalable, and interpretable, while downweighting noisy low-count compounds without the complexity of full likelihood models. They are also easy to productionize (feature store → batch/online inference).
 
 **Approach.**
@@ -145,16 +139,12 @@ Weighted tree- and neighbor-based models offer a **middle ground**: simple, scal
 ---
 
 ### Option 2 — ChemBERTa for DEL Data
-**Rationale.** Fingerprint models may overfit to fragment overlap, especially under **disynthon** splits. Transformer encoders like **ChemBERTa** can capture richer molecular context and generalize better across scaffolds.  
+Fingerprint-based models may overfit to fragment overlap, especially under **disynthon** splits. Transformer-based models like **ChemBERTa** can capture richer molecular context and generalize better across scaffolds.  
+By combining pretrained embeddings with **count-aware training**, ChemBERTa can learn contextual chemical features while remaining robust to noisy, low-count compounds. This design also extends naturally to multi-task setups across multiple kinases.
 
+**Approach.**
+- Fine-tune **ChemBERTa**, a pretrained SMILES encoder, on DEL compounds.  
 
-#### **Approach 1: Frozen Embeddings + lighweight head**
-
-Compute and cache sequence-level embeddings from a pretrained ChemBERTa encoder for each SMILES string, then train simple regressors on top (XGBoost/Random Forest). A lighter approach that is easy to reproduce.  
-
-#### **Approach 2: Fine Tuning**
-
-Fine-tune **ChemBERTa**, on DEL compounds using the HuggingFace trainer. This can improve results but costs more in terms of computing
 
 ## Code
 
